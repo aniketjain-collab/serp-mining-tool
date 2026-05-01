@@ -39,11 +39,25 @@ if "results" not in st.session_state:
 # -----------------------------
 with st.sidebar:
     st.header("Configuration")
-    serpapi_key = st.text_input(
-        "SerpAPI Key",
-        type="password",
-        help="Your SerpAPI key. Get one at serpapi.com",
-    )
+
+    # Try to load the key from Streamlit Cloud secrets first
+    secret_api_key = ""
+    try:
+        secret_api_key = st.secrets.get("SERPAPI_KEY", "")
+    except Exception:
+        # No secrets file configured — fall through to manual input
+        pass
+
+    if secret_api_key:
+        serpapi_key = secret_api_key
+        st.success("API key loaded from secrets")
+    else:
+        serpapi_key = st.text_input(
+            "SerpAPI Key",
+            type="password",
+            help="Get one at serpapi.com. Configure as a secret to skip this step.",
+        )
+
     st.markdown("---")
     st.markdown("**How it works**")
     st.markdown(
@@ -354,10 +368,8 @@ if st.session_state.results:
         f"**{len(top_urls)}** unique competitor URLs in the top 5."
     )
 
-    # Single Excel download — both tabs, named after the report
     if top_paa or top_urls:
         excel_bytes = build_excel(top_paa, top_urls)
-        # Sanitize filename: strip filesystem-unsafe characters only
         safe_name = re.sub(r'[<>:"/\\|?*]', "", report_name_display).strip()
         st.download_button(
             label="⬇ Download Full Report (Excel, 2 tabs)",
@@ -369,7 +381,6 @@ if st.session_state.results:
 
     col1, col2 = st.columns(2)
 
-    # ---------- PAA box ----------
     with col1:
         st.subheader("Top 5 People Also Ask")
         if top_paa:
@@ -387,7 +398,6 @@ if st.session_state.results:
         else:
             st.info("No PAA questions found.")
 
-    # ---------- URL box ----------
     with col2:
         st.subheader("Top 5 Competitor URLs")
         if top_urls:
